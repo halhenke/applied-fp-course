@@ -71,10 +71,8 @@ runApp = do
 -- final Either value.
 prepareAppReqs
   :: IO (Either StartUpError Env)
-prepareAppReqs = do
-  cfg <- initConf
-  db <- initDB cfg
-  pure $ Right ( Env cfg db )
+prepareAppReqs =
+  error "prepareAppReqs not reimplemented"
   where
     toStartUpErr 
       :: (a -> StartUpError) 

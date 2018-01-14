@@ -74,7 +74,7 @@ library
                      , optparse-applicative == 0.13.*
                      , aeson == 1.*
                      , mtl == 2.2.*
-                     , time == 1.6.*
+                     , time == 1.8.*
                      , sqlite-simple == 0.4.*
                      , sqlite-simple-errors == 0.6.*
 
