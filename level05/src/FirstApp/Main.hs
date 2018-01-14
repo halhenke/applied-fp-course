@@ -49,11 +49,18 @@ data StartUpError
   deriving Show
 
 runApp :: IO ()
-runApp =
-  error "runApp needs re-implementing"
+runApp = error "runApp needs re-implementing"
 
+-- We need to complete the following steps to prepare our app requirements:
+--
+-- 1) Load the configuration.
+-- 2) Attempt to initialise the database.
+-- 3) Combine the results into a tuple
+--
+-- The filename for our application config is: "appconfig.json"
+--
 prepareAppReqs
-  :: IO (Either StartUpError (Conf.Conf,DB.FirstAppDB))
+  :: IO ( Either StartUpError (Conf.Conf,DB.FirstAppDB) )
 prepareAppReqs =
   error "prepareAppReqs not implemented"
 
@@ -63,8 +70,8 @@ mkResponse
   -> ContentType
   -> LBS.ByteString
   -> Response
-mkResponse sts ct msg =
-  responseLBS sts [(hContentType, renderContentType ct)] msg
+mkResponse sts ct =
+  responseLBS sts [(hContentType, renderContentType ct)]
 
 resp200
   :: ContentType
@@ -104,32 +111,30 @@ resp200Json =
 
 -- |
 app
-  :: Conf.Conf
-  -> DB.FirstAppDB -- ^ Add the Database record to our app so we can use it
+  :: DB.FirstAppDB -- ^ Add the Database record to our app so we can use it
   -> Application
-app cfg db rq cb = do
+app db rq cb = do
   rq' <- mkRequest rq
   resp <- handleRespErr <$> handleRErr rq'
   cb resp
   where
-    -- Does this seem clunky to you?
+    handleRespErr :: Either Error Response -> Response
     handleRespErr = either mkErrorResponse id
-    -- Because it is clunky, and we have a better solution, later.
-    handleRErr =
-      -- We want to pass the Database through to the handleRequest so it's
-      -- available to all of our handlers.
-      either ( pure . Left ) ( handleRequest cfg db )
+
+    -- We want to pass the Database through to the handleRequest so it's
+    -- available to all of our handlers.
+    handleRErr :: Either Error RqType -> IO (Either Error Response)
+    handleRErr = either ( pure . Left ) ( handleRequest db )
 
 handleRequest
-  :: Conf.Conf
-  -> DB.FirstAppDB
+  :: DB.FirstAppDB
   -> RqType
   -> IO (Either Error Response)
-handleRequest _ _db (AddRq _ _) =
-  fmap (const ( resp200 PlainText "Success" )) <$> error "AddRq handler not implemented"
-handleRequest _ _db (ViewRq _)  =
+handleRequest _db (AddRq _ _) =
+  (resp200 PlainText "Success" <$) <$> error "AddRq handler not implemented"
+handleRequest _db (ViewRq _)  =
   error "ViewRq handler not implemented"
-handleRequest _ _db ListRq      =
+handleRequest _db ListRq      =
   error "ListRq handler not implemented"
 
 mkRequest
@@ -138,17 +143,13 @@ mkRequest
 mkRequest rq =
   case ( pathInfo rq, requestMethod rq ) of
     -- Commenting on a given topic
-    ( [t, "add"], "POST" ) ->
-      mkAddRequest t <$> strictRequestBody rq
+    ( [t, "add"], "POST" ) -> mkAddRequest t <$> strictRequestBody rq
     -- View the comments on a given topic
-    ( [t, "view"], "GET" ) ->
-      pure ( mkViewRequest t )
+    ( [t, "view"], "GET" ) -> pure ( mkViewRequest t )
     -- List the current topics
-    ( ["list"], "GET" )    ->
-      pure mkListRequest
+    ( ["list"], "GET" )    -> pure mkListRequest
     -- Finally we don't care about any other requests so throw your hands in the air
-    _                      ->
-      pure ( Left UnknownRoute )
+    _                      -> pure ( Left UnknownRoute )
 
 mkAddRequest
   :: Text

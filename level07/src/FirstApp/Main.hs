@@ -57,7 +57,7 @@ runApp = do
   either print runWithDbConn appE
   where
     runWithDbConn env =
-      appWithDb env >> DB.closeDb (envDb env)
+      appWithDb env >> DB.closeDB (envDb env)
 
     appWithDb env =
       run ( Conf.confPortToWai $ envConfig env ) (app env)
@@ -76,18 +76,22 @@ prepareAppReqs = do
   db <- initDB cfg
   pure $ Right ( Env cfg db )
   where
-    toStartUpErr =
+    toStartUpErr 
+      :: (a -> StartUpError) 
+      -> IO (Either a c) 
+      -> ExceptT StartUpError IO c
+    toStartUpErr = 
       error "toStartUpErr not reimplemented"
 
     -- Take our possibly failing configuration/db functions with their unique
     -- error types and turn them into a consistently typed ExceptT. We can then
     -- use them in a `do` block as if the Either isn't there. Extracting the
     -- final result before returning.
-    initConf = toStartUpErr ConfErr $
-      Conf.parseOptions "appconfig.json"
+    initConf :: ExceptT StartUpError IO Conf.Conf
+    initConf = toStartUpErr ConfErr $ Conf.parseOptions "appconfig.json"
 
-    initDB cfg = toStartUpErr DbInitErr $
-      DB.initDb (Conf.dbFilePath cfg) (Conf.tableName cfg)
+    initDB :: Conf.Conf -> ExceptT StartUpError IO DB.FirstAppDB
+    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (Conf.dbFilePath cfg)
 
 app
   :: Env
@@ -97,11 +101,14 @@ app env rq cb = do
   resp <- either handleError pure e
   cb resp
   where
+    logToErr :: Text -> IO ()
     logToErr = liftIO . hPutStrLn stderr
 
+    requestToResponse :: IO (Either Error Response)
     requestToResponse = runAppM env $
       mkRequest rq >>= handleRequest
 
+    handleError :: Error -> IO Response
     handleError e = do
       _ <- ( logToErr . Text.pack . show ) e
       pure $ mkErrorResponse e

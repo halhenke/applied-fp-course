@@ -19,6 +19,10 @@ installed and available on your system.
 Also we will not necessarily provide all of the required imports any more, there
 may be other things you have to bring into scope.
 
-Start in ``src/FirstApp/DB/Types.hs``, before moving to ``src/FirstApp/DB.hs``.
+The steps for this level:
+1) ``src/FirstApp/DB/Types.hs``
+2) ``src/FirstApp/Types.hs``
+3) ``src/FirstApp/DB.hs``
+4) ``src/FirstApp/Main.hs``
 
 NB: The PostgreSQL example module is in ``src/FirstApp/DB/PostgreSQL.hs``.

@@ -30,7 +30,7 @@ import qualified Data.Aeson.Types  as A
 
 import           Data.Time         (UTCTime)
 
-import           FirstApp.DB.Types (DbComment)
+import           FirstApp.DB.Types (DBComment)
 
 newtype Topic = Topic Text
   deriving (Show, ToJSON)
@@ -57,7 +57,7 @@ data Comment = Comment
   deriving ( Show, Generic )
 
 -- Strip the prefix (which may fail if the prefix isn't present), fall
--- back to the original label if need be, then camel-case the name.
+-- back to the original label if need be.
 
 -- | modFieldLabel
 -- >>> modFieldLabel "commentId"
@@ -93,7 +93,7 @@ instance ToJSON Comment where
 -- is a nice method for separating out the back and front end of a web app and
 -- providing greater guarantees about data cleanliness.
 fromDbComment
-  :: DbComment
+  :: DBComment
   -> Either Error Comment
 fromDbComment =
   error "fromDbComment not yet implemented"

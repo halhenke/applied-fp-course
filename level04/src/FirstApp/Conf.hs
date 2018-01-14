@@ -65,9 +65,7 @@ mkMessage
   :: Conf
   -> LBS.ByteString
 mkMessage =
-  mappend "App says: "
-  . getHelloMsg
-  . helloMsg
+  getHelloMsg . helloMsg
 
 data Conf = Conf
   { port     :: Port

@@ -44,6 +44,13 @@ source and other packages that are listed in a `test-suite` configuration
 section in the Cabal file are not loaded. You can manually tell ``ghcid`` to
 load and examine these files with the following command:
 
-```shell
-$ ghcid -c "cabal repl level0N-tests"'
+```bash
+$ ghcid -c "cabal repl level04-tests"
 ```
+
+It should work with ``stack`` as well:
+```base
+$ ghcid -c "stack repl level04-tests"
+```
+
+Please read the ``ghcid``documentation for installation and usage instructions.

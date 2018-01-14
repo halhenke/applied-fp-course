@@ -19,7 +19,7 @@ import           Data.Text                (Text)
 import           Data.Text.Encoding       (decodeUtf8)
 
 import qualified FirstApp.Conf            as Conf
-import           FirstApp.Types           (ContentType (PlainText), Error (EmptyCommentText, EmptyTopic, UnknownRoute),
+import           FirstApp.Types           (Conf, ContentType (PlainText), Error (EmptyCommentText, EmptyTopic, UnknownRoute),
                                            RqType (AddRq, ListRq, ViewRq),
                                            mkCommentText, mkTopic,
                                            renderContentType)
@@ -39,8 +39,8 @@ mkResponse
   -> ContentType
   -> LBS.ByteString
   -> Response
-mkResponse sts ct msg =
-  responseLBS sts [(hContentType, renderContentType ct)] msg
+mkResponse sts ct =
+  responseLBS sts [(hContentType, renderContentType ct)]
 
 resp200
   :: ContentType
@@ -66,22 +66,24 @@ resp400 =
 
 -- Now that we have our configuration, pass it where it needs to go.
 app
-  :: Conf.Conf
+  :: Conf
   -> Application
-app cfg rq cb =
-  (handleRespErr . handleRErr <$> mkRequest rq) >>= cb
+app cfg rq cb = do
+  r <- mkRequest rq
+  cb . handleRespErr . handleRErr $ r
   where
     -- Does this seem clunky to you?
-    handleRespErr =
-      either mkErrorResponse id
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
+
     -- Because it is clunky, and we have a better solution, later.
-    handleRErr =
-      either Left ( handleRequest cfg )
+    handleRErr :: Either Error RqType -> Either Error Response
+    handleRErr = (>>= handleRequest cfg)
 
 -- Now we have some config, we can pull the ``helloMsg`` off it and use it in
 -- the response.
 handleRequest
-  :: Conf.Conf
+  :: Conf
   -> RqType
   -> Either Error Response
 handleRequest _cfg (AddRq _ _) =
@@ -97,17 +99,13 @@ mkRequest
 mkRequest rq =
   case ( pathInfo rq, requestMethod rq ) of
     -- Commenting on a given topic
-    ( [t, "add"], "POST" ) ->
-      mkAddRequest t <$> strictRequestBody rq
+    ( [t, "add"], "POST" ) -> mkAddRequest t <$> strictRequestBody rq
     -- View the comments on a given topic
-    ( [t, "view"], "GET" ) ->
-      pure ( mkViewRequest t )
+    ( [t, "view"], "GET" ) -> pure ( mkViewRequest t )
     -- List the current topics
-    ( ["list"], "GET" )    ->
-      pure mkListRequest
+    ( ["list"], "GET" )    -> pure mkListRequest
     -- Finally we don't care about any other requests so build an Error response
-    _                      ->
-      pure ( Left UnknownRoute )
+    _                      -> pure ( Left UnknownRoute )
 
 mkAddRequest
   :: Text

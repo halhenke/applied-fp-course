@@ -57,7 +57,7 @@ runApp = do
   either print runWithDbConn appE
   where
     runWithDbConn env =
-      appWithDb env >> DB.closeDb (envDb env)
+      appWithDb env >> DB.closeDB (envDb env)
 
     appWithDb env =
       run ( Conf.confPortToWai $ envConfig env ) (app env)
@@ -69,7 +69,8 @@ prepareAppReqs = do
   -- This is awkward because we need to initialise our DB using the config,
   -- which might have failed to be created for some reason, but our DB start up
   -- might have also failed for some reason. This is a bit clunky
-  dbE <- fmap join (traverse initDB cfgE)
+  dbE <- join <$> traverse initDB cfgE
+
   -- Wrap our values (if we have them) in our Env for use in other parts of our
   -- application. We do it this way so we can have access to the bits we need
   -- when starting up the full app or one for testing.
@@ -80,18 +81,16 @@ prepareAppReqs = do
     -- This makes it a bit easier to take our individual initialisation
     -- functions and ensure that they both conform to the StartUpError type
     -- that we want them too.
-    toStartUpErr =
-      fmap . first
+    toStartUpErr :: (a -> b) -> IO (Either a c) -> IO (Either b c)
+    toStartUpErr = fmap . first
 
-    initConf =
-      -- Prepare the config
-      toStartUpErr ConfErr
-      $ Conf.parseOptions "appconfig.json"
+    -- Prepare the config
+    initConf :: IO (Either StartUpError Conf.Conf)
+    initConf = toStartUpErr ConfErr $ Conf.parseOptions "appconfig.json"
 
-    initDB cfg =
-      -- Power up the tubes
-      toStartUpErr DbInitErr
-      $ DB.initDb (Conf.dbFilePath cfg) (Conf.tableName cfg)
+    -- Power up the tubes
+    initDB :: Conf.Conf -> IO (Either StartUpError DB.FirstAppDB)
+    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (Conf.dbFilePath cfg)
 
 app
   :: Env
@@ -103,17 +102,18 @@ app _env rq _cb =
     -- within our AppM context, we need to run the AppM to get our IO action out
     -- to be run and handed off to the callback function. We've already written
     -- the function for this so include the 'runAppM' with the Env.
+    requestToResponse :: AppM Response
     requestToResponse = do
       -- Exercise: Rewrite this function to remove the need for the intermediate values.
       rq' <- mkRequest rq
       er' <- handleRErr rq'
       handleRespErr er'
 
-    handleRespErr =
-      either mkErrorResponse pure
+    handleRespErr :: Either Error Response -> AppM Response
+    handleRespErr = either mkErrorResponse pure
 
-    handleRErr =
-      either ( pure . Left ) handleRequest
+    handleRErr :: Either Error RqType -> AppM (Either Error Response)
+    handleRErr = either ( pure . Left ) handleRequest
 
 handleRequest
   :: RqType
@@ -154,14 +154,11 @@ mkRequest rq =
     ( [t, "add"], "POST" ) ->
       liftIO (mkAddRequest t <$> strictRequestBody rq)
     -- View the comments on a given topic
-    ( [t, "view"], "GET" ) ->
-      pure ( mkViewRequest t )
+    ( [t, "view"], "GET" ) -> pure ( mkViewRequest t )
     -- List the current topics
-    ( ["list"], "GET" )    ->
-      pure mkListRequest
+    ( ["list"], "GET" )    -> pure mkListRequest
     -- Finally we don't care about any other requests so throw your hands in the air
-    _                      ->
-      pure ( Left UnknownRoute )
+    _                      -> pure ( Left UnknownRoute )
 
 mkAddRequest
   :: Text

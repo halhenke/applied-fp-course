@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module FirstApp.DB
-  ( Table (..)
-  , FirstAppDB (FirstAppDB)
+  ( FirstAppDB (FirstAppDB)
   , initDb
   , closeDb
   , addCommentToTopic
@@ -29,12 +28,6 @@ import           FirstApp.Types                     (Comment, CommentText,
 -- You'll need the documentation for sqlite-simple ready for this section! |
 -- ------------------------------------------------------------------------|
 
--- We need to have a way to pass around the name of the Table we're going to us
--- for the comments in this application. We _could_ pass around a `Text` value,
--- but we can be better than that.
-newtype Table = Table Text
-  deriving Show
-
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
 -- having to rewrite all of the functions that need to interact with DB related
@@ -48,42 +41,19 @@ closeDb
 closeDb =
   error "closeDb not implemented"
 
--- Because our `Table` is a configurable value, this application has a SQL
--- injection vulnerability. That being said, in order to leverage this weakness,
--- your appconfig.json file must be compromised and your app restarted. If that
--- is capable of happening courtesy of a hostile actor, there are larger issues.
-
--- Complete the withTable function so that the placeholder '$$tablename$$' is
--- found and replaced in the provided Query.
--- | withTable
--- >>> withTable (Table "tbl_nm") "SELECT * FROM $$tablename$$"
--- "SELECT * FROM tbl_nm"
--- >>> withTable (Table "tbl_nm") "SELECT * FROM foo"
--- "SELECT * FROM foo"
--- >>> withTable (Table "tbl_nm") ""
--- ""
-withTable
-  :: Table
-  -> Query
-  -> Query
-withTable =
-  error "withTable not yet implemented"
-
 -- Given a `FilePath` to our SQLite DB file, initialise the database and ensure
 -- our Table is there by running a query to create it, if it doesn't exist
 -- already.
 initDb
   :: FilePath
-  -> Table
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDb fp tab =
+initDb fp =
   error "initDb not implemented"
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
   -- extension is enabled.
-    createTableQ = withTable tab
-      "CREATE TABLE IF NOT EXISTS $$tablename$$ (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
+    createTableQ = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
 
 -- Note that we don't store the `Comment` in the DB, it is the type we build
 -- to send to the outside world. We will be loading our `DbComment` type from
@@ -100,11 +70,14 @@ getComments
   -> Topic
   -> IO (Either Error [Comment])
 getComments =
+  let
+    sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
   -- There are several possible implementations of this function. Paritcularly
   -- there may be a trade-off between deciding to throw an Error if a DbComment
   -- cannot be converted to a Comment, or simply ignoring any DbComment that is
   -- not valid.
-  error "getComments not implemented"
+  in
+    error "getComments not implemented"
 
 addCommentToTopic
   :: FirstAppDB
@@ -112,17 +85,27 @@ addCommentToTopic
   -> CommentText
   -> IO (Either Error ())
 addCommentToTopic =
-  error "addCommentToTopic not implemented"
+  let
+    sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+  in
+    error "addCommentToTopic not implemented"
+
 
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
 getTopics =
-  error "getTopics not implemented"
+  let
+    sql = "SELECT DISTINCT topic FROM comments"
+  in
+    error "getTopics not implemented"
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
 deleteTopic =
-  error "deleteTopic not implemented"
+  let
+    sql = "DELETE FROM comments WHERE topic = ?"
+  in
+    error "deleteTopic not implemented"

@@ -2,8 +2,8 @@
 module FirstApp.DB
   ( Table (..)
   , FirstAppDB (FirstAppDB)
-  , initDb
-  , closeDb
+  , initDB
+  , closeDB
   , addCommentToTopic
   , getComments
   , getTopics
@@ -41,63 +41,28 @@ import           FirstApp.AppM                      (AppM, envDb, throwL)
 -- >>> :set -XOverloadedStrings
 
 -- Quick helper to pull the connection and close it down.
-closeDb
+closeDB
   :: FirstAppDB
   -> IO ()
-closeDb =
+closeDB =
   Sql.close . dbConn
 
--- Because our `Table` is a configurable value, this application has a SQL
--- injection vulnerability. That being said, in order to leverage this weakness,
--- your appconfig.json file must be compromised and your app restarted. If that
--- is capable of happening courtesy of a hostile actor, there are larger issues.
-
--- Complete the withTable function so that the placeholder '$$tablename$$' is
--- found and replaced in the provided Query.
--- | withTable
--- >>> withTable (Table "tbl_nm") "SELECT * FROM $$tablename$$"
--- "SELECT * FROM tbl_nm"
--- >>> withTable (Table "tbl_nm") "SELECT * FROM foo"
--- "SELECT * FROM foo"
--- >>> withTable (Table "tbl_nm") ""
--- ""
-withTable
-  :: Table
-  -> Query
-  -> Query
-withTable t = Sql.Query
-  -- This '$$foo$$' is our own made up placeholder value, it is not part of the Query type.
-  . Text.replace "$$tablename$$" (getTableName t)
-  . fromQuery
-
--- If we're using AppM, then the Table information will be stored in our
--- ReaderT, so we can request it from there without requiring it to be passed.
--- If this location or type changes, then the compiler will complain so it won't
--- be a forgotten feature.
-withTableM
-  :: Query
-  -> AppM Query
-withTableM =
-  error "withTableM not implemented"
-
-initDb
+initDB
   :: FilePath
-  -> Table
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDb fp tab = Sql.runDBAction $ do
+initDB fp = Sql.runDBAction $ do
   -- Initialise the connection to the DB...
   -- - What could go wrong here?
   -- - What haven't we be told in the types?
   con <- Sql.open fp
   -- Initialise our one table, if it's not there already
   _ <- Sql.execute_ con createTableQ
-  pure $ FirstAppDB con tab
+  pure $ FirstAppDB con
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
   -- extension is enabled.
-    createTableQ = withTable tab
-      "CREATE TABLE IF NOT EXISTS $$tablename$$ (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
+    createTableQ = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
 
 runDb
   :: ( Sql.Connection -> IO a )
@@ -154,7 +119,7 @@ getComments
   -> AppM [Comment]
 getComments t = do
   -- Write the query with an icky string and remember your placeholders!
-  q <- withTableM "SELECT id,topic,comment,time FROM $$tablename$$ WHERE topic = ?"
+  let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
   -- To be doubly and triply sure we've no garbage in our response, we take care
   -- to convert our DB storage type into something we're going to share with the
   -- outside world. Checking again for things like empty Topic or CommentText values.
@@ -170,11 +135,11 @@ addCommentToTopic t c = do
   nowish <- liftIO getCurrentTime
   -- Note the triple, matching the number of values we're trying to insert, plus
   -- one for the table name.
-  q <- withTableM
-        -- Remember that the '?' are order dependent so if you get your input
-        -- parameters in the wrong order, the types won't save you here. More on that
-        -- sort of goodness later.
-        "INSERT INTO $$tablename$$ (topic,comment,time) VALUES (?,?,?)"
+  --
+  -- Remember that the '?' are order dependent so if you get your input
+  -- parameters in the wrong order, the types won't save you here. More on that
+  -- sort of goodness later.
+  let q = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   -- We use the execute function this time as we don't care about anything
   -- that is returned. The execute function will still return the number of rows
   -- affected by the query, which in our case should always be 1.
@@ -185,7 +150,7 @@ addCommentToTopic t c = do
 getTopics
   :: AppM [Topic]
 getTopics = do
-  q <- withTableM "SELECT DISTINCT topic FROM $$tablename$$"
+  let q = "SELECT DISTINCT topic FROM comments"
   res <- runDb $ faQuery_ q
   throwL $ traverse ( mkTopic . Sql.fromOnly ) res
 
@@ -193,5 +158,5 @@ deleteTopic
   :: Topic
   -> AppM ()
 deleteTopic t = do
-  q <- withTableM "DELETE FROM $$tablename$$ WHERE topic = ?"
+  let q = "DELETE FROM comments WHERE topic = ?"
   runDb $ faExecute q [getTopic t]

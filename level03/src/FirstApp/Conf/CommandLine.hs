@@ -2,30 +2,38 @@ module FirstApp.Conf.CommandLine
   ( commandLineParser
   ) where
 
+import           Data.Monoid         (Last (Last), (<>))
+
+import           Options.Applicative (Parser, eitherReader, execParser,
+                                      fullDesc, header, help, helper, info,
+                                      long, metavar, option, optional, progDesc,
+                                      short, strOption)
+
+import           Data.String         (fromString)
+import           Text.Read           (readEither)
+
+import           FirstApp.Types      (HelloMsg (HelloMsg),
+                                      PartialConf (PartialConf), Port (Port))
+
 -- | Command Line Parsing
 
--- We will use the ``optparse-applicative`` package to build our command line
--- parser. As this particular problem is fraught with silly dangers and we
--- appreciate someone else having eaten this gremlin on our behalf.
-
--- You'll need to use the documentation for ``optparse-applicative`` to help you
--- write these functions as we're relying on their API to produce the types we
--- need. We've provided some of the less interesting boilerplate for you.
+-- This is an example of using the ``optparse-applicative`` package to build our command line
+-- parser. As this particular problem is fraught with silly dangers and we appreciate someone else
+-- having eaten this gremlin on our behalf.
 commandLineParser
-  :: ParserInfo PartialConf
+  :: IO PartialConf
 commandLineParser =
   let mods = fullDesc
         <> progDesc "Manage comments for something"
         <> header "Your first Haskell app!"
   in
-    info (helper <*> partialConfParser) mods
+    execParser $ info (helper <*> partialConfParser) mods
 
 -- Combine the smaller parsers into our larger ``PartialConf`` type.
 partialConfParser
   :: Parser PartialConf
-partialConfParser = PartialConf
-  <$> portParser
-  <*> helloMsgParser
+partialConfParser =
+  PartialConf <$> portParser <*> helloMsgParser
 
 -- Parse the Port value off the command line args and into a Last wrapper.
 portParser
@@ -36,8 +44,8 @@ portParser =
            <> short 'p'
            <> metavar "PORT"
            <> help "TCP Port to accept requests on"
-    portReader =
-      eitherReader (fmap Port . readEither)
+    -- A custom parser to turn a String into a Word16, before putting it into a Port
+    portReader = eitherReader (fmap Port . readEither)
   in
     Last <$> optional (option portReader mods)
 

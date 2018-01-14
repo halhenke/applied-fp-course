@@ -34,8 +34,6 @@ import           Options.Applicative        (Parser, ParserInfo, eitherReader,
 
 import           Text.Read                  (readEither)
 
-import           FirstApp.DB.Types          (Table (Table))
-
 -- Doctest setup section
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -43,7 +41,6 @@ import           FirstApp.DB.Types          (Table (Table))
 data ConfigError
   = MissingPort
   | MissingHelloMsg
-  | MissingTableName
   | JSONDecodeError String
   | JSONFileReadError IOError
   | MissingDbFilePath
@@ -66,7 +63,6 @@ helloFromStr =
 data Conf = Conf
   { port       :: Port
   , helloMsg   :: HelloMsg
-  , tableName  :: Table
   , dbFilePath :: FilePath
   }
 
@@ -79,18 +75,16 @@ confPortToWai =
 data PartialConf = PartialConf
   { pcPort       :: Last Port
   , pcHelloMsg   :: Last HelloMsg
-  , pcTableName  :: Last Table
   , pcDbFilePath :: Last FilePath
   }
 
 instance Monoid PartialConf where
-  mempty = PartialConf mempty mempty mempty mempty
+  mempty = PartialConf mempty mempty mempty
 
   mappend a b = PartialConf
     -- Compiler tells us about the little things we might have forgotten.
     { pcPort       = pcPort a <> pcPort b
     , pcHelloMsg   = pcHelloMsg a <> pcHelloMsg b
-    , pcTableName  = pcTableName a <> pcTableName b
     , pcDbFilePath = pcDbFilePath a <> pcDbFilePath b
     }
 
@@ -101,8 +95,7 @@ defaultConf
 defaultConf = PartialConf
   (pure (Port 3000))
   (pure (HelloMsg "World!"))
-  (pure (Table "comments"))
-  (pure "firstapp_db.db")
+  (pure "app_db.db")
 
 -- We need something that will take our PartialConf and see if can finally build
 -- a complete Conf record. Also we need to highlight any missing config values
@@ -113,7 +106,6 @@ makeConfig
 makeConfig pc = Conf
   <$> lastToEither MissingPort pcPort
   <*> lastToEither MissingHelloMsg pcHelloMsg
-  <*> lastToEither MissingTableName pcTableName
   <*> lastToEither MissingDbFilePath pcDbFilePath
   where
     -- You don't need to provide type signatures for most functions in where/let
@@ -197,7 +189,6 @@ parseJSONConfigFile fp =
       ( fromJsonObjWithKey "port" Port cObj )
       ( fromJsonObjWithKey "helloMsg" helloFromStr cObj )
       -- Pull the extra keys off the configuration file.
-      ( fromJsonObjWithKey "tableName" Table cObj )
       ( fromJsonObjWithKey "dbFilePath" id cObj )
 
 -- | Command Line Parsing
@@ -220,7 +211,6 @@ partialConfParser = PartialConf
   -- Add our two new fields to the parsing of the PartialConf record. Note that
   -- if you update the data structure the compiler will do its best to inform
   -- you about everywhere that needs attention.
-  <*> strParse ( Table . Text.pack ) tableMods
   <*> strParse id dbFilePathMods
   where
     -- With the addition of two new very similar parsers, we can abstract out
@@ -238,11 +228,6 @@ partialConfParser = PartialConf
                  <> short 'd'
                  <> metavar "DBFILEPATH"
                  <> help "FilePath to the SQLite DB"
-
-    tableMods = long "table-name"
-                 <> short 't'
-                 <> metavar "TABLENAME"
-                 <> help "Comments DB table name"
 
 -- Parse the Port value off the command line args and into our Last wrapper.
 portParser

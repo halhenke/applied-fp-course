@@ -34,8 +34,6 @@ import           Options.Applicative        (Parser, ParserInfo, eitherReader,
 
 import           Text.Read                  (readEither)
 
-import           FirstApp.DB                (Table (Table))
-
 -- Doctest setup section
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -43,7 +41,6 @@ import           FirstApp.DB                (Table (Table))
 data ConfigError
   = MissingPort
   | MissingHelloMsg
-  | MissingTableName
   | JSONDecodeError String
   | JSONFileReadError IOError
   -- Do we have anything else that can go wrong with our Conf now ?
@@ -209,11 +206,6 @@ partialConfParser = PartialConf
     --              <> short 'd'
     --              <> metavar "DBFILEPATH"
     --              <> help "FilePath to the SQLite DB"
-
-    -- tableMods = long "table-name"
-    --              <> short 't'
-    --              <> metavar "TABLENAME"
-    --              <> help "Comments DB table name"
 
 -- Parse the Port value off the command line args and into our Last wrapper.
 portParser

@@ -4,6 +4,8 @@ module Main where
 import           Test.Hspec
 import           Test.Hspec.Wai
 
+import           Data.String                (fromString)
+
 import qualified System.Exit                as Exit
 
 import qualified Data.ByteString.Lazy.Char8 as LBS8
@@ -24,10 +26,10 @@ main = do
 
     Right cfg -> do
       -- We need to setup our Application.
-      let app' = undefined
+      let app' = pure (Main.app cfg)
 
-      -- What function in the Hspec or Hspec.Wai package do we need to use here
-      -- so that Hspec can manage the running of our Wai Application?
+      -- This sets up HSpec to use our application as the thing it executes before the tests are
+      -- run
       hspec . with app' $ do
           -- Here is an example test for the 'ListRq' route.
           -- Start with a general description of what we're going to test.
@@ -45,3 +47,13 @@ main = do
               -- a string literal, it will assume that is the expected body of
               -- the request and also check for a 200 response code.
               get "/list" `shouldRespondWith` "List Request not implemented"
+
+          -- Write some more tests, below are some ideas to get you started:
+          -- Don't worry if you don't get all of these done, you can complete them later.
+
+          -- 1) The '<topic>/add' route will respond with an error when given an empty comment
+          -- 2) The '<topic>/view' route will respond correctly when given a topic
+          -- 3) The '<topic>/view' route will respond with an error when given an empty topic
+          -- 4) A gibberish route will return a 404
+          -- 5) The '<topic>/add' route will respond with the message from the config (the `mkMessage` function from FirstApp.Conf will help)
+

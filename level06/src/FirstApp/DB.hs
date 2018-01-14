@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module FirstApp.DB
-  ( Table (..)
-  , FirstAppDB (FirstAppDB)
-  , initDb
-  , closeDb
+  ( FirstAppDB (FirstAppDB)
+  , initDB
+  , closeDB
   , addCommentToTopic
   , getComments
   , getTopics
@@ -28,66 +27,38 @@ import           FirstApp.Types                     (Comment, CommentText,
                                                      getCommentText, getTopic,
                                                      mkTopic)
 
-newtype Table = Table
-  { getTableName :: Text }
-  deriving Show
-
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
 -- having to rewrite all of the functions that need to interact with DB related
 -- things in different ways.
-data FirstAppDB = FirstAppDB
+newtype FirstAppDB = FirstAppDB
   { dbConn  :: Connection
-  , dbTable :: Table
   }
 
 -- Quick helper to pull the connection and close it down.
-closeDb
+closeDB
   :: FirstAppDB
   -> IO ()
-closeDb =
+closeDB =
   Sql.close . dbConn
 
--- Because our `Table` is a configurable value, this application has a SQL
--- injection vulnerability. That being said, in order to leverage this weakness,
--- your appconfig.json file must be compromised and your app restarted. If that
--- is capable of happening courtesy of a hostile actor, there are larger issues.
-
--- Complete the withTable function so that the placeholder '$$tablename$$' is
--- found and replaced in the provided Query.
--- | withTable
--- >>> withTable (Table "tbl_nm") "SELECT * FROM $$tablename$$"
--- "SELECT * FROM tbl_nm"
--- >>> withTable (Table "tbl_nm") "SELECT * FROM foo"
--- "SELECT * FROM foo"
--- >>> withTable (Table "tbl_nm") ""
--- ""
-withTable
-  :: Table
-  -> Query
-  -> Query
-withTable t = Sql.Query
-  . Text.replace "$$tablename$$" (getTableName t)
-  . fromQuery
-
-initDb
+initDB
   :: FilePath
-  -> Table
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDb fp tab = Sql.runDBAction $ do
+initDB fp = Sql.runDBAction $ do
   -- Initialise the connection to the DB...
   -- - What could go wrong here?
   -- - What haven't we be told in the types?
   con <- Sql.open fp
   -- Initialise our one table, if it's not there already
   _ <- Sql.execute_ con createTableQ
-  pure $ FirstAppDB con tab
+  pure $ FirstAppDB con
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
   -- extension is enabled.
-    createTableQ = withTable tab
-      "CREATE TABLE IF NOT EXISTS $$tablename$$ (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
+    createTableQ =
+      "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
 
 runDb
   :: (a -> Either Error b)
@@ -110,8 +81,7 @@ getComments
   -> IO (Either Error [Comment])
 getComments db t = do
   -- Write the query with an icky string and remember your placeholders!
-  let q = withTable (dbTable db)
-        "SELECT id,topic,comment,time FROM $$tablename$$ WHERE topic = ?"
+  let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
   -- To be doubly and triply sure we've no garbage in our response, we take care
   -- to convert our DB storage type into something we're going to share with the
   -- outside world. Checking again for things like empty Topic or CommentText values.
@@ -127,11 +97,11 @@ addCommentToTopic db t c = do
   nowish <- getCurrentTime
   -- Note the triple, matching the number of values we're trying to insert, plus
   -- one for the table name.
-  let q = withTable (dbTable db)
+  let q =
         -- Remember that the '?' are order dependent so if you get your input
         -- parameters in the wrong order, the types won't save you here. More on that
         -- sort of goodness later.
-        "INSERT INTO $$tablename$$ (topic,comment,time) VALUES (?,?,?)"
+        "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   -- We use the execute function this time as we don't care about anything
   -- that is returned. The execute function will still return the number of rows
   -- affected by the query, which in our case should always be 1.
@@ -143,7 +113,7 @@ getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
 getTopics db =
-  let q = withTable (dbTable db) "SELECT DISTINCT topic FROM $$tablename$$"
+  let q = "SELECT DISTINCT topic FROM comments"
   in
     runDb (traverse ( mkTopic . Sql.fromOnly )) $ Sql.query_ (dbConn db) q
 
@@ -152,6 +122,6 @@ deleteTopic
   -> Topic
   -> IO (Either Error ())
 deleteTopic db t =
-  let q = withTable (dbTable db) "DELETE FROM $$tablename$$ WHERE topic = ?"
+  let q = "DELETE FROM comments WHERE topic = ?"
   in
     runDb Right $ Sql.execute (dbConn db) q [getTopic t]

@@ -7,7 +7,11 @@ your development, plus consulting plenty of documentation to leverage the chosen
 packages. There may also be, depending on your level of interest, some external
 reading for later as well.
 
-Start in ``src/FirstApp/Conf.hs``.
+The steps for this level:
+1) ``src/FirstApp/Types.hs``
+2) ``src/FirstApp/Conf/File.hs``
+3) ``src/FirstApp/Conf.hs``
+4) ``src/FirstApp/Main.hs``
 
 The packages we will use for this are:
 
