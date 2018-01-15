@@ -107,7 +107,7 @@ script:
   - mv "level01"/dist/level01-*.tar.gz "level02"/dist/level02-*.tar.gz "level03"/dist/level03-*.tar.gz "level04"/dist/level04-*.tar.gz "level05"/dist/level05-*.tar.gz "level06"/dist/level06-*.tar.gz "level07"/dist/level07-*.tar.gz ${DISTDIR}/
   - cd ${DISTDIR} || false
   - find . -maxdepth 1 -name '*.tar.gz' -exec tar -xvf '{}' \;
-  - "printf 'packages: level01-*/*.cabal level02-*/*.cabal level03-*/*.cabal level04-*/*.cabal level05-*/*.cabal level06-*/*.cabal level07-*/*.cabal\\n' > cabal.project"
+  - "printf 'packages: level01/*.cabal level02/*.cabal level03/*.cabal level04/*.cabal level05/*.cabal level06/*.cabal level07/*.cabal\\n' > cabal.project"
   - cat cabal.project
   # this builds all libraries and executables (without tests/benchmarks)
   - cabal new-build -w ${HC} --disable-tests --disable-benchmarks all
@@ -120,13 +120,13 @@ script:
   - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} ${BENCH} all; fi
 
   # cabal check
-  - (cd level01-* && cabal check)
-  - (cd level02-* && cabal check)
-  - (cd level03-* && cabal check)
-  - (cd level04-* && cabal check)
-  - (cd level05-* && cabal check)
-  - (cd level06-* && cabal check)
-  - (cd level07-* && cabal check)
+  - (cd level01 && cabal check)
+  - (cd level02 && cabal check)
+  - (cd level03 && cabal check)
+  - (cd level04 && cabal check)
+  - (cd level05 && cabal check)
+  - (cd level06 && cabal check)
+  - (cd level07 && cabal check)
 
   # haddock
   - rm -rf ./dist-newstyle

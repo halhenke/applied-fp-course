@@ -164,7 +164,7 @@ mkErrorResponse EmptyCommentText =
   pure $ Res.resp400 PlainText "Empty Comment"
 mkErrorResponse EmptyTopic       =
   pure $ Res.resp400 PlainText "Empty Topic"
-mkErrorResponse ( DBError e )    = do
+mkErrorResponse ( DBError _e )    = do
   -- As with our request for the FirstAppDB, we use the asks function from
   -- Control.Monad.Reader and pass the field accessors from the Env record.
   error "mkErrorResponse needs to 'log' our DB Errors to the console"
