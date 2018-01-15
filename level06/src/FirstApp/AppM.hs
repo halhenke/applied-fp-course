@@ -6,8 +6,7 @@ import           Control.Monad.Reader   (MonadReader, ReaderT, runReaderT)
 
 import           Data.Text              (Text)
 
-import           FirstApp.Conf          (Conf)
-import           FirstApp.DB            (FirstAppDB)
+import           FirstApp.Types         (Conf, FirstAppDB)
 
 -- a ReaderT is a function from some 'r' to some 'm a' : (r -> m a). Whereby
 -- the 'r' is accessible to all functions that run in the context of that 'm'.
@@ -25,7 +24,7 @@ import           FirstApp.DB            (FirstAppDB)
 data Env = Env
   { envLoggingFn :: Text -> AppM ()
   , envConfig    :: Conf
-  , envDb        :: FirstAppDB
+  , envDB        :: FirstAppDB
   }
 
 -- Lets crack on and define a newtype wrapper for our ReaderT, this will save us
@@ -80,3 +79,5 @@ runAppM
   -> IO a
 runAppM =
   error "runAppM not implemented"
+
+-- Move on to ``src/FirstApp/DB.hs`` after this

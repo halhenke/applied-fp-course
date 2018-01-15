@@ -36,18 +36,21 @@ import qualified FirstApp.Conf                      as Conf
 import qualified FirstApp.DB                        as DB
 
 import qualified FirstApp.Responses                 as Res
-import           FirstApp.Types                     (ContentType (PlainText),
+import           FirstApp.Types                     (Conf (dbFilePath),
+                                                     ConfigError,
+                                                     ContentType (PlainText),
                                                      Error (DBError, EmptyCommentText, EmptyTopic, UnknownRoute),
                                                      RqType (AddRq, ListRq, ViewRq),
+                                                     confPortToWai,
                                                      mkCommentText, mkTopic)
 
-import           FirstApp.AppM                      (AppM, Env (Env, envConfig, envDb, envLoggingFn))
+import           FirstApp.AppM                      (AppM, Env (Env, envConfig, envDB, envLoggingFn))
 
 -- Our start-up is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
 -- single type so that we can deal with the entire start-up process as a whole.
 data StartUpError
-  = ConfErr Conf.ConfigError
+  = ConfErr ConfigError
   | DbInitErr SQLiteResponse
   deriving Show
 
@@ -57,10 +60,10 @@ runApp = do
   either print runWithDbConn appE
   where
     runWithDbConn env =
-      appWithDb env >> DB.closeDB (envDb env)
+      appWithDb env >> DB.closeDB (envDB env)
 
     appWithDb env =
-      run ( Conf.confPortToWai $ envConfig env ) (app env)
+      run ( confPortToWai $ envConfig env ) (app env)
 
 prepareAppReqs
   :: IO (Either StartUpError Env)
@@ -81,66 +84,39 @@ prepareAppReqs = do
     -- This makes it a bit easier to take our individual initialisation
     -- functions and ensure that they both conform to the StartUpError type
     -- that we want them too.
+    --
+    -- Fun for later: Play with composing 'fmap' and 'first' in ghci and
+    -- watch how the types specialise and change.
     toStartUpErr :: (a -> b) -> IO (Either a c) -> IO (Either b c)
     toStartUpErr = fmap . first
 
     -- Prepare the config
-    initConf :: IO (Either StartUpError Conf.Conf)
+    initConf :: IO (Either StartUpError Conf)
     initConf = toStartUpErr ConfErr $ Conf.parseOptions "appconfig.json"
 
     -- Power up the tubes
-    initDB :: Conf.Conf -> IO (Either StartUpError DB.FirstAppDB)
-    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (Conf.dbFilePath cfg)
+    initDB :: Conf -> IO (Either StartUpError DB.FirstAppDB)
+    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (dbFilePath cfg)
 
+-- Now that our request handling and response creating functions operate
+-- within our AppM context, we need to run the AppM to get our IO action out
+-- to be run and handed off to the callback function. We've already written
+-- the function for this so include the 'runAppM' with the Env.
 app
   :: Env
   -> Application
-app _env rq _cb =
-  error "app not implemented"
-  where
-    -- Now that our request handling and response creating functions operate
-    -- within our AppM context, we need to run the AppM to get our IO action out
-    -- to be run and handed off to the callback function. We've already written
-    -- the function for this so include the 'runAppM' with the Env.
-    requestToResponse :: AppM Response
-    requestToResponse = do
-      -- Exercise: Rewrite this function to remove the need for the intermediate values.
-      rq' <- mkRequest rq
-      er' <- handleRErr rq'
-      handleRespErr er'
-
-    handleRespErr :: Either Error Response -> AppM Response
-    handleRespErr = either mkErrorResponse pure
-
-    handleRErr :: Either Error RqType -> AppM (Either Error Response)
-    handleRErr = either ( pure . Left ) handleRequest
+app =
+  error "Copy your completed 'app' from the previous level and refactor it here"
 
 handleRequest
   :: RqType
   -> AppM (Either Error Response)
-handleRequest rqType = do
-  -- Now that we're operating within the context of our AppM, which is a
-  -- ReaderT, we're able to access the values stored in the Env.
-  --
-  -- Two functions that allow us to access the data stored in our ReaderT are:
-  -- ask :: MonadReader r m => m r
-  -- &
-  -- asks :: MonadReader r m => (r -> a) -> m a
-  --
-  -- We will use ``asks`` here as we only want the FirstAppDB, so...
-  -- > envDb      :: Env -> FirstAppDB
-  -- > AppM       :: ReaderT Env IO a
-  -- > asks       :: (Env -> a) -> AppM a
-  -- > asks envDb :: AppM FirstAppDB
-  db <- asks envDb
-  liftIO $ case rqType of
+handleRequest rqType =
+  case rqType of
     -- Exercise: Could this be generalised to clean up the repetition ?
-    AddRq t c ->
-      pure (Res.resp200 PlainText "Success") <$ DB.addCommentToTopic db t c
-    ViewRq t  ->
-      fmap Res.resp200Json <$> DB.getComments db t
-    ListRq    ->
-      fmap Res.resp200Json <$> DB.getTopics db
+    AddRq t c -> pure (Res.resp200 PlainText "Success") <$ DB.addCommentToTopic t c
+    ViewRq t  -> fmap Res.resp200Json <$> DB.getComments t
+    ListRq    -> fmap Res.resp200Json <$> DB.getTopics
 
 mkRequest
   :: Request

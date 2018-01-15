@@ -1,18 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import           Control.Monad  (join)
+import           Control.Monad  (void, join)
+
+import Data.Bifunctor (first)
 
 import           Test.Hspec
 import           Test.Hspec.Wai
 
 import qualified System.Exit    as Exit
 
-import qualified FirstApp.Conf  as Conf
+import qualified FirstApp.AppM  as AppM
 import qualified FirstApp.DB    as DB
 import qualified FirstApp.Main  as Main
 import qualified FirstApp.Types as Types
-import qualified FirstApp.AppM  as AppM
+
 main :: IO ()
 main = do
   let dieWith m = print m >> Exit.exitFailure
@@ -26,17 +28,10 @@ main = do
     Right env -> do
       let app' = pure ( Main.app env )
 
-          -- Write a function to clear the comments for a specific topic.
-          -- This will be run before each test is run.
-          flushTopic =
-            -- Clean up and yell about our errors
-            fmap ( either dieWith pure . join ) .
-            -- Purge all of the comments for this topic for our tests
-            traverse ( DB.deleteTopic db )
-            -- We don't export the constructor so even for known values we have
-            -- to play by the rules. There is no - "Oh just this one time.", do
-            -- it right.
-            $ Types.mkTopic "fudge"
+          flushTopic :: IO ()
+          flushTopic = AppM.runAppM env $ do
+            r <- traverse DB.deleteTopic ( Types.mkTopic "fudge" )
+            either ( liftIO . dieWith ) pure $ join r
 
       -- Run the tests with a DB topic flush between each spec
       hspec . with ( flushTopic >> app' ) $ do
