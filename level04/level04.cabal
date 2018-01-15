@@ -79,6 +79,7 @@ library
                      , time >= 1.4 && <= 1.9
                      , sqlite-simple == 0.4.*
                      , sqlite-simple-errors == 0.6.*
+                     , semigroups >= 0.18
 
 
   -- Directories containing source files.
@@ -125,4 +126,5 @@ test-suite doctests
   main-is:             doctests.hs
   hs-source-dirs:      tests
   build-depends:       base
-                     , doctest == 0.11.*
+                     , doctest >= 0.11 && < 0.14
+                     , semigroups >= 0.18
