@@ -120,13 +120,13 @@ script:
   - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} ${BENCH} all; fi
 
   # cabal check
-  - (cd level01 && cabal check)
-  - (cd level02 && cabal check)
-  - (cd level03 && cabal check)
-  - (cd level04 && cabal check)
-  - (cd level05 && cabal check)
-  - (cd level06 && cabal check)
-  - (cd level07 && cabal check)
+  # - (cd level01 && cabal check)
+  # - (cd level02 && cabal check)
+  # - (cd level03 && cabal check)
+  # - (cd level04 && cabal check)
+  # - (cd level05 && cabal check)
+  # - (cd level06 && cabal check)
+  # - (cd level07 && cabal check)
 
   # haddock
   - rm -rf ./dist-newstyle
