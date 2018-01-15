@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-unused-matches #-}
 module FirstApp.DB
   ( FirstAppDB (FirstAppDB)
-  , initDb
-  , closeDb
+  , initDB
+  , closeDB
   , addCommentToTopic
   , getComments
   , getTopics
@@ -15,97 +14,114 @@ import qualified Data.Text                          as Text
 
 import           Data.Time                          (getCurrentTime)
 
-import           Database.SQLite.Simple             (Connection, Query (Query))
+import           Database.SQLite.Simple             (Connection,
+                                                     Query (fromQuery))
 import qualified Database.SQLite.Simple             as Sql
 
 import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           FirstApp.Types                     (Comment, CommentText,
-                                                     Error, Topic)
-
--- ------------------------------------------------------------------------|
--- You'll need the documentation for sqlite-simple ready for this section! |
--- ------------------------------------------------------------------------|
+                                                     Error (DBError), Topic,
+                                                     fromDbComment,
+                                                     getCommentText, getTopic,
+                                                     mkTopic)
 
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
 -- having to rewrite all of the functions that need to interact with DB related
 -- things in different ways.
-data FirstAppDB = FirstAppDB
+newtype FirstAppDB = FirstAppDB
+  { dbConn  :: Connection
+  }
 
 -- Quick helper to pull the connection and close it down.
-closeDb
+closeDB
   :: FirstAppDB
   -> IO ()
-closeDb =
-  error "closeDb not implemented"
+closeDB =
+  Sql.close . dbConn
 
--- Given a `FilePath` to our SQLite DB file, initialise the database and ensure
--- our Table is there by running a query to create it, if it doesn't exist
--- already.
-initDb
+initDB
   :: FilePath
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDb fp =
-  error "initDb not implemented"
+initDB fp = Sql.runDBAction $ do
+  -- Initialise the connection to the DB...
+  -- - What could go wrong here?
+  -- - What haven't we be told in the types?
+  con <- Sql.open fp
+  -- Initialise our one table, if it's not there already
+  _ <- Sql.execute_ con createTableQ
+  pure $ FirstAppDB con
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
   -- extension is enabled.
-    createTableQ = "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time TEXT)"
+    createTableQ =
+      "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY, topic TEXT, comment TEXT, time INTEGER)"
 
--- Note that we don't store the `Comment` in the DB, it is the type we build
--- to send to the outside world. We will be loading our `DbComment` type from
--- the FirstApp.DB.Types module before converting trying to convert it to a
--- `Comment`.
---
--- To go from a DbComment to a Comment, we need to use ``fromDbComment`` that is
--- defined in FirstApp.Types.
---
--- HINT: You can use '?' or named place-holders as query parameters. Have a look
--- at the section on parameter substitution in sqlite-simple's documentation.
+runDb
+  :: (a -> Either Error b)
+  -> IO a
+  -> IO (Either Error b)
+runDb f a = do
+  r <- Sql.runDBAction a
+  pure $ either (Left . DBError) f r
+  -- Choices, choices...
+  -- Sql.runDBAction a >>= pure . either (Left . DBError) f
+  -- these two are pretty much the same.
+  -- Sql.runDBAction >=> pure . either (Left . DBError) f
+  -- this is because we noticed that our call to pure, which means we should
+  -- be able to fmap to victory.
+  -- fmap ( either (Left . DBError) f ) . Sql.runDBAction
+
 getComments
   :: FirstAppDB
   -> Topic
   -> IO (Either Error [Comment])
-getComments =
-  let
-    sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
-  -- There are several possible implementations of this function. Paritcularly
-  -- there may be a trade-off between deciding to throw an Error if a DbComment
-  -- cannot be converted to a Comment, or simply ignoring any DbComment that is
-  -- not valid.
-  in
-    error "getComments not implemented"
+getComments db t = do
+  -- Write the query with an icky string and remember your placeholders!
+  let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+  -- To be doubly and triply sure we've no garbage in our response, we take care
+  -- to convert our DB storage type into something we're going to share with the
+  -- outside world. Checking again for things like empty Topic or CommentText values.
+  runDb ( traverse fromDbComment ) $ Sql.query (dbConn db) q [ getTopic t ]
 
 addCommentToTopic
   :: FirstAppDB
   -> Topic
   -> CommentText
   -> IO (Either Error ())
-addCommentToTopic =
-  let
-    sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
-  in
-    error "addCommentToTopic not implemented"
-
+addCommentToTopic db t c = do
+  -- Record the time this comment was created.
+  nowish <- getCurrentTime
+  -- Note the triple, matching the number of values we're trying to insert, plus
+  -- one for the table name.
+  let q =
+        -- Remember that the '?' are order dependent so if you get your input
+        -- parameters in the wrong order, the types won't save you here. More on that
+        -- sort of goodness later.
+        "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+  -- We use the execute function this time as we don't care about anything
+  -- that is returned. The execute function will still return the number of rows
+  -- affected by the query, which in our case should always be 1.
+  runDb Right $ Sql.execute (dbConn db) q (getTopic t, getCommentText c, nowish)
+  -- An alternative is to write a returning query to get the Id of the DbComment
+  -- we've created. We're being lazy (hah!) for now, so assume awesome and move on.
 
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
-getTopics =
-  let
-    sql = "SELECT DISTINCT topic FROM comments"
+getTopics db =
+  let q = "SELECT DISTINCT topic FROM comments"
   in
-    error "getTopics not implemented"
+    runDb (traverse ( mkTopic . Sql.fromOnly )) $ Sql.query_ (dbConn db) q
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
-deleteTopic =
-  let
-    sql = "DELETE FROM comments WHERE topic = ?"
+deleteTopic db t =
+  let q = "DELETE FROM comments WHERE topic = ?"
   in
-    error "deleteTopic not implemented"
+    runDb Right $ Sql.execute (dbConn db) q [getTopic t]

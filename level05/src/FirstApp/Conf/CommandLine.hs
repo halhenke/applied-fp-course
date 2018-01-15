@@ -9,10 +9,9 @@ import           Options.Applicative (Parser, eitherReader, execParser,
                                       long, metavar, option, optional, progDesc,
                                       short, strOption)
 
-import           Data.String         (fromString)
 import           Text.Read           (readEither)
 
-import           FirstApp.Types      (HelloMsg (HelloMsg),
+import           FirstApp.Types      (DBFilePath (DBFilePath),
                                       PartialConf (PartialConf), Port (Port))
 
 -- | Command Line Parsing
@@ -33,7 +32,7 @@ commandLineParser =
 partialConfParser
   :: Parser PartialConf
 partialConfParser =
-  PartialConf <$> portParser <*> helloMsgParser
+  PartialConf <$> portParser <*> dbFilePathParser
 
 -- Parse the Port value off the command line args and into a Last wrapper.
 portParser
@@ -49,14 +48,14 @@ portParser =
   in
     Last <$> optional (option portReader mods)
 
--- Parse the HelloMsg from the input string into our type and into a Last wrapper.
-helloMsgParser
-  :: Parser (Last HelloMsg)
-helloMsgParser =
+-- Parse the DBFilePath from the input string into our type and into a Last wrapper.
+dbFilePathParser
+  :: Parser (Last DBFilePath)
+dbFilePathParser =
   let
-    mods = long "hello-msg"
-           <> short 'm'
-           <> metavar "HELLOMSG"
-           <> help "Message to respond to requests with."
+    mods = long "db-filepath"
+           <> short 'd'
+           <> metavar "DBFILEPATH"
+           <> help "File path for our SQLite Database file."
   in
-    Last <$> optional (HelloMsg . fromString <$> strOption mods)
+    Last <$> optional (DBFilePath <$> strOption mods)

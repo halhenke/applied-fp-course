@@ -1,59 +1,58 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import           Control.Monad  (join)
+
 import           Test.Hspec
 import           Test.Hspec.Wai
 
-import           Data.String                (fromString)
+import qualified System.Exit    as Exit
 
-import qualified System.Exit                as Exit
-
-import qualified Data.ByteString.Lazy.Char8 as LBS8
-
-import qualified FirstApp.Conf              as Conf
-import qualified FirstApp.Main              as Main
+import qualified FirstApp.DB    as DB
+import qualified FirstApp.Main  as Main
+import qualified FirstApp.Types as Types
 
 main :: IO ()
 main = do
-  -- We're still going to be running our application so we need to load the config.
-  cfgE <- Conf.parseOptions "appconfig.json"
-  case cfgE of
+  let dieWith m = print m >> Exit.exitFailure
 
-    Left err ->
-      -- Die loudly if the config couldn't be loaded. Ensure we exit with a
-      -- failure code to trip up anything that might be watching our run status.
-      error "Config failure error handling not implemented"
+  reqsE <- Main.prepareAppReqs
+  case reqsE of
 
-    Right cfg -> do
-      -- We need to setup our Application.
-      let app' = pure (Main.app cfg)
+    Left err -> dieWith err
 
-      -- This sets up HSpec to use our application as the thing it executes before the tests are
-      -- run
-      hspec . with app' $ do
-          -- Here is an example test for the 'ListRq' route.
-          -- Start with a general description of what we're going to test.
-          describe "List Route" $ do
-            -- Individual test cases provide more precise information regarding
-            -- what they are going to test.
-            it "Should return a 'not implemented' message and 200 status" $
-              -- Using the functions from ``Test.Hspec.Wai`` this actions a GET request
-              -- on the "/list" route, and using an infix function, compares the result of
-              -- that request to our expected result.
+    Right db -> do
+      let app' = pure ( Main.app db )
 
-              -- There String literal here is being converted by the use of the
-              -- ``IsString`` typeclass into a response type that Hspec.Wai can
-              -- use. Check the documentation for more examples, but when given
-              -- a string literal, it will assume that is the expected body of
-              -- the request and also check for a 200 response code.
-              get "/list" `shouldRespondWith` "List Request not implemented"
+          flushTopic =
+            -- Clean up and yell about our errors
+            fmap ( either dieWith pure . join ) .
+            -- Purge all of the comments for this topic for our tests
+            traverse ( DB.deleteTopic db )
+            -- We don't export the constructor so even for known values we have
+            -- to play by the rules. There is no - "Oh just this one time.", do it right.
+            $ Types.mkTopic "fudge"
 
-          -- Write some more tests, below are some ideas to get you started:
-          -- Don't worry if you don't get all of these done, you can complete them later.
+      -- Run the tests with a DB topic flush between each spec
+      hspec . with ( flushTopic >> app' ) $ do
 
-          -- 1) The '<topic>/add' route will respond with an error when given an empty comment
-          -- 2) The '<topic>/view' route will respond correctly when given a topic
-          -- 3) The '<topic>/view' route will respond with an error when given an empty topic
-          -- 4) A gibberish route will return a 404
-          -- 5) The '<topic>/add' route will respond with the message from the config (the `mkMessage` function from FirstApp.Conf will help)
+        -- AddRq Spec
+        describe "POST /topic/add" $ do
 
+          it "Should return 200 with well formed request" $ do
+            post "/fudge/add" "Fred" `shouldRespondWith` "Success"
+
+          it "Should 400 on empty input" $
+            post "/fudge/add" "" `shouldRespondWith` 400
+
+        -- ViewRq Spec
+        describe "GET /topic/view" $ do
+          it "Should return 200 with content" $ do
+            post "/fudge/add" "Is super tasty."
+            get "/fudge/view" `shouldRespondWith` 200
+
+        -- ListRq Spec
+        describe "GET /list" $ do
+          it "Should return 200 with content" $ do
+            post "/fudge/add" "Is super tasty."
+            get "/list" `shouldRespondWith` "[\"fudge\"]"
