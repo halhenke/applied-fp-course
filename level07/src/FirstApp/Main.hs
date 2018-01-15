@@ -30,23 +30,26 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           System.IO                          (stderr)
 
-import qualified FirstApp.Conf                      as Conf
 import qualified FirstApp.DB                        as DB
 
+import qualified FirstApp.Conf                      as Conf
 import           FirstApp.Error                     (Error (DBError, EmptyCommentText, EmptyTopic, UnknownRoute))
 import qualified FirstApp.Responses                 as Res
-import           FirstApp.Types                     (RqType (AddRq, ListRq, ViewRq),
+import           FirstApp.Types                     (Conf (..),
+                                                     ConfigError (..),
+                                                     RqType (AddRq, ListRq, ViewRq),
+                                                     confPortToWai,
                                                      mkCommentText, mkTopic)
 
 import           FirstApp.AppM                      (AppM,
-                                                     Env (Env, envConfig, envDb),
+                                                     Env (Env, envConfig, envDB),
                                                      runAppM, throwL)
 
 -- Our start-up process is becoming more complicated and could fail in new and
 -- interesting ways. But we also want to be able to capture these errors in a
 -- single type so that we can deal with the entire start-up process as a whole.
 data StartUpError
-  = ConfErr Conf.ConfigError
+  = ConfErr ConfigError
   | DbInitErr SQLiteResponse
   deriving Show
 
@@ -57,10 +60,10 @@ runApp = do
   either print runWithDbConn appE
   where
     runWithDbConn env =
-      appWithDb env >> DB.closeDB (envDb env)
+      appWithDb env >> DB.closeDB (envDB env)
 
     appWithDb env =
-      run ( Conf.confPortToWai $ envConfig env ) (app env)
+      run ( confPortToWai $ envConfig env ) (app env)
 
 -- Monad transformers can be used without needing to write the newtype. Recall
 -- that the constructor for ExceptT has a type of :: m (Either e a). So if you
@@ -72,8 +75,11 @@ runApp = do
 prepareAppReqs
   :: IO (Either StartUpError Env)
 prepareAppReqs =
-  error "prepareAppReqs not reimplemented"
+  error "Copy your completed 'prepareAppReqs' and refactor to match the new type signature"
   where
+    logToErr :: Text -> AppM ()
+    logToErr = liftIO . hPutStrLn stderr
+
     toStartUpErr :: (a -> StartUpError) -> IO (Either a c) -> ExceptT StartUpError IO c
     toStartUpErr = error "toStartUpErr not reimplemented"
 
@@ -81,11 +87,11 @@ prepareAppReqs =
     -- error types and turn them into a consistently typed ExceptT. We can then
     -- use them in a `do` block as if the Either isn't there. Extracting the
     -- final result before returning.
-    initConf :: ExceptT StartUpError IO Conf.Conf
+    initConf :: ExceptT StartUpError IO Conf
     initConf = toStartUpErr ConfErr $ Conf.parseOptions "appconfig.json"
 
-    initDB :: Conf.Conf -> ExceptT StartUpError IO DB.FirstAppDB
-    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (Conf.dbFilePath cfg)
+    initDB :: Conf -> ExceptT StartUpError IO DB.FirstAppDB
+    initDB cfg = toStartUpErr DbInitErr $ DB.initDB (dbFilePath cfg)
 
 app
   :: Env

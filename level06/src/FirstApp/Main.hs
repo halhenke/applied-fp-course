@@ -167,7 +167,6 @@ mkErrorResponse EmptyTopic       =
 mkErrorResponse ( DBError e )    = do
   -- As with our request for the FirstAppDB, we use the asks function from
   -- Control.Monad.Reader and pass the field accessors from the Env record.
-  logF <- asks envLoggingFn
-  _ <- (logF . Text.pack . show) e
+  error "mkErrorResponse needs to 'log' our DB Errors to the console"
   -- Be a sensible developer and don't leak your DB errors over the internet.
   pure (Res.resp500 PlainText "OH NOES")

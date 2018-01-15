@@ -48,6 +48,8 @@ cabal-version:       >=1.10
 library
   -- Modules included in this executable, other than Main.
   exposed-modules:     FirstApp.Conf
+                     , FirstApp.Conf.CommandLine
+                     , FirstApp.Conf.File
                      , FirstApp.Responses
                      , FirstApp.Types
                      , FirstApp.Error
@@ -61,7 +63,6 @@ library
                        -fno-warn-unused-do-bind
                        -fno-warn-unused-imports
                        -fno-warn-type-defaults
-                       -fwarn-missing-import-lists
                        -ferror-spans
 
   -- Other library packages from which modules are imported.
@@ -114,6 +115,7 @@ test-suite level07-tests
                      , hspec-wai == 0.8.*
                      , bytestring == 0.10.*
                      , text == 1.2.*
+                     , mtl == 2.2.*
 
 test-suite doctests
   -- Base language which the package is written in.
