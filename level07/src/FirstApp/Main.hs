@@ -74,12 +74,8 @@ prepareAppReqs
 prepareAppReqs =
   error "prepareAppReqs not reimplemented"
   where
-    toStartUpErr 
-      :: (a -> StartUpError) 
-      -> IO (Either a c) 
-      -> ExceptT StartUpError IO c
-    toStartUpErr = 
-      error "toStartUpErr not reimplemented"
+    toStartUpErr :: (a -> StartUpError) -> IO (Either a c) -> ExceptT StartUpError IO c
+    toStartUpErr = error "toStartUpErr not reimplemented"
 
     -- Take our possibly failing configuration/db functions with their unique
     -- error types and turn them into a consistently typed ExceptT. We can then
@@ -103,13 +99,10 @@ app env rq cb = do
     logToErr = liftIO . hPutStrLn stderr
 
     requestToResponse :: IO (Either Error Response)
-    requestToResponse = runAppM env $
-      mkRequest rq >>= handleRequest
+    requestToResponse = runAppM env $ mkRequest rq >>= handleRequest
 
     handleError :: Error -> IO Response
-    handleError e = do
-      _ <- ( logToErr . Text.pack . show ) e
-      pure $ mkErrorResponse e
+    handleError e = mkErrorResponse e <$ ( logToErr . Text.pack . show ) e
 
 -- This function has changed quite a bit since we changed our DB functions to be
 -- part of AppM. We no longer have to deal with the extra layer of the returned
@@ -175,4 +168,3 @@ mkErrorResponse EmptyTopic       =
   Res.resp400 "Empty Topic"
 mkErrorResponse ( DBError _ )    =
   Res.resp500 "OH NOES"
-

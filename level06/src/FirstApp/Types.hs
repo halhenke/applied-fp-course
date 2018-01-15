@@ -24,7 +24,7 @@ import           Data.Text                          (Text)
 import           Data.List                          (stripPrefix)
 import           Data.Maybe                         (fromMaybe)
 
-import           Data.Aeson                         (ToJSON (toJSON))
+import           Data.Aeson                         (ToJSON)
 import qualified Data.Aeson                         as A
 import qualified Data.Aeson.Types                   as A
 
