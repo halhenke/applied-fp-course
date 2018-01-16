@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
-module FirstApp.Main (runApp, app) where
+module FirstApp.Main
+  ( runApp
+  , app
+  , prepareAppReqs
+  ) where
 
 import           Network.Wai                        (Application, Request,
                                                      Response, pathInfo,

@@ -105,7 +105,7 @@ test-suite level05-tests
   hs-source-dirs:      tests
   main-is:             Test.hs
   build-depends:       base >= 4.7 && <=4.11
-                     , level06
+                     , level05
                      , wai == 3.2.*
                      , wai-extra == 3.0.*
                      , hspec == 2.4.*
@@ -119,4 +119,5 @@ test-suite doctests
   main-is:             doctests.hs
   hs-source-dirs:      tests
   build-depends:       base
+                     , level05
                      , doctest >= 0.11 && < 0.14

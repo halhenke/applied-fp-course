@@ -21,8 +21,8 @@ main = do
 
     Left err -> dieWith err
 
-    Right db -> do
-      let app' = pure ( Main.app db )
+    Right ( cfg, db ) -> do
+      let app' = pure ( Main.app cfg db )
 
           flushTopic =
             -- Clean up and yell about our errors

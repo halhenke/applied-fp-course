@@ -28,9 +28,6 @@ before_cache:
 
 matrix:
   include:
-    - compiler: "ghc-7.8.4"
-    # env: TEST=--disable-tests BENCH=--disable-benchmarks
-      addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-7.8.4], sources: [hvr-ghc]}}
     - compiler: "ghc-7.10.3"
     # env: TEST=--disable-tests BENCH=--disable-benchmarks
       addons: {apt: {packages: [ghc-ppa-tools,cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
@@ -50,7 +47,6 @@ before_install:
   - "PATH=/opt/ghc/bin:/opt/ghc-ppa-tools/bin:$HOME/local/bin:$PATH"
   - HCNUMVER=$(( $(${HC} --numeric-version|sed -E 's/([0-9]+)\.([0-9]+)\.([0-9]+).*/\1 * 10000 + \2 * 100 + \3/') ))
   - echo $HCNUMVER
-  - sudo apt-get install sqlite -y
 
 install:
   - cabal --version
@@ -107,7 +103,7 @@ script:
   # - mv "level01"/dist/level01-*.tar.gz "level02"/dist/level02-*.tar.gz "level03"/dist/level03-*.tar.gz "level04"/dist/level04-*.tar.gz "level05"/dist/level05-*.tar.gz "level06"/dist/level06-*.tar.gz "level07"/dist/level07-*.tar.gz ${DISTDIR}/
   # - cd ${DISTDIR} || false
   # - find . -maxdepth 1 -name '*.tar.gz' -exec tar -xvf '{}' \;
-  - "printf 'packages: level01/*.cabal level02/*.cabal level03/*.cabal level04/*.cabal level05/*.cabal level06/*.cabal level07/*.cabal\\n' > cabal.project"
+  - "printf 'packages: level01/level01.cabal level02/level02.cabal level03/level03.cabal level04/level04.cabal level05/level05.cabal level06/level06.cabal level07/level07.cabal\\n' > cabal.project"
   - cat cabal.project
   # this builds all libraries and executables (without tests/benchmarks)
   - cabal new-build -w ${HC} --disable-tests --disable-benchmarks all
@@ -117,7 +113,7 @@ script:
 
   # build & run tests, build benchmarks
   - cabal new-build -w ${HC} ${TEST} ${BENCH} all
-  - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} ${BENCH} all; fi
+  # - if [ "x$TEST" = "x--enable-tests" ]; then cabal new-test -w ${HC} ${TEST} ${BENCH} all; fi
 
   # cabal check
   # - (cd level01 && cabal check)
