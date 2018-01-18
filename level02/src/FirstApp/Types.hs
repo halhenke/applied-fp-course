@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-dodgy-exports #-}
 module FirstApp.Types
   ( Topic
@@ -29,18 +29,28 @@ import           Data.Text       (Text)
 -- AddRq : Which needs the target topic, and the body of the comment.
 -- ViewRq : Which needs the topic being requested.
 -- ListRq : Which doesn't need anything and lists all of the current topics.
-data RqType
+data RqType =
+    AddRq Topic CommentText
+  | ViewRq Topic
+  | ListRq
 
 -- Not everything goes according to plan, but it's important that our types
 -- reflect when errors can be introduced into our program. Additionally it's
 -- useful to be able to be descriptive about what went wrong.
 
 -- Fill in the error constructors as you need them.
-data Error
+data Error =
+    EmptyTopic
+  | EmptyCommentText
+  | WeirdStatus
+  | UnknownRouteError
 
 -- Provide the constructors for a sum type to specify the `ContentType` Header,
 -- to be used when we build our Response type.
-data ContentType
+data ContentType =
+      -- JSONContent
+    -- | PlainText
+    PlainText
 
 -- The ``ContentType`` constructors don't match what is required for the header
 -- information, so write a function that will take our ``ContentType`` and
@@ -48,6 +58,7 @@ data ContentType
 renderContentType
   :: ContentType
   -> ByteString
+-- renderContentType JSONType =
 renderContentType =
   error "renderContentType not implemented"
 
@@ -82,23 +93,27 @@ newtype CommentText = CommentText Text
 mkTopic
   :: Text
   -> Either Error Topic
-mkTopic =
-  error "mkTopic not implemented"
+mkTopic "" = Left EmptyTopic
+mkTopic t  = Right $ Topic t
+  -- error "mkTopic not implemented"
 
 getTopic
   :: Topic
   -> Text
-getTopic =
-  error "getTopic not implemented"
+getTopic (Topic t) = t
+  -- error "getTopic not implemented"
 
 mkCommentText
   :: Text
   -> Either Error CommentText
-mkCommentText =
-  error "mkCommentText not implemented"
+mkCommentText t =
+  -- error "mkCommentText not implemented"
+  case t of
+    "" -> Left EmptyCommentText
+    _  -> Right (CommentText t)
 
 getCommentText
   :: CommentText
   -> Text
-getCommentText =
-  error "getCommentText not implemented"
+getCommentText (CommentText t) = t
+  -- error "getCommentText not implemented"

@@ -1,5 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
 module FirstApp.DB.Types where
+-- module FirstApp.DB.Types (
+--     DBComment(..)
+--   , type DBTopic(..)
+--   ) where
 
 import           Data.Text                      (Text)
 import           Data.Time                      (UTCTime)
@@ -13,7 +17,14 @@ import           Database.SQLite.Simple.FromRow (FromRow (fromRow), field)
 --
 -- Complete in the DbComment type below so it is a record type that matches the
 -- Comment type, but without the newtype wrappers for each value.
-data DBComment = DBComment
+
+-- TODO: Fix this - its shit - match Comment
+data DBComment = DBComment {
+    dbCommentID      :: Int,
+    dbCommentTopic   :: Text,
+    dbCommentComment :: Text,
+    dbCommentTime    :: UTCTime
+  }
   deriving Show
 
 -- This Typeclass comes from the `sqlite-simple` package and describes how to
@@ -21,5 +32,19 @@ data DBComment = DBComment
 -- type. This technique of translating a result row to a type will differ
 -- between different packages/databases.
 instance FromRow DBComment where
+  fromRow = DBComment <$> field <*> field <*> field <*> field
+
+newtype DBTopic = DBTopic Text
+  deriving (Show)
+
+-- newtype Topic = Topic Text
+--   deriving (Show)
+
+getTextFromDBTopic :: DBTopic -> Text
+getTextFromDBTopic (DBTopic t) = t
+
+
+instance FromRow DBTopic where
+  fromRow = DBTopic <$> field
 
 -- Now move to ``src/FirstApp/Types.hs``

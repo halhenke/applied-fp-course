@@ -12,8 +12,11 @@ module FirstApp.Types
   , renderContentType
   ) where
 
-import           Data.ByteString (ByteString)
-import           Data.Text       (Text)
+import           Data.ByteString      (ByteString)
+import qualified Data.ByteString.Lazy as LBS
+import           Data.Text.Encoding   (decodeUtf8)
+
+import           Data.Text            (Text)
 
 newtype Topic = Topic Text
   deriving Show
@@ -84,3 +87,8 @@ renderContentType
   -> ByteString
 renderContentType PlainText = "text/plain"
 renderContentType JSON      = "application/json"
+
+
+-- | Because this sucks to do a lot
+lbsToText :: LBS.ByteString -> Text
+lbsToText = decodeUtf8 . LBS.toStrict

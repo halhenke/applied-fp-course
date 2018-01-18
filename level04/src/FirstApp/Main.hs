@@ -35,7 +35,7 @@ import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 import           FirstApp.Conf                      (Conf, firstAppConfig)
 import qualified FirstApp.DB                        as DB
 import           FirstApp.Types                     (ContentType (JSON, PlainText),
-                                                     Error (EmptyCommentText, EmptyTopic, UnknownRoute),
+                                                     Error (DBError, DBRowRetrieval, EmptyCommentText, EmptyTopic, UnknownRoute),
                                                      RqType (AddRq, ListRq, ViewRq),
                                                      mkCommentText, mkTopic,
                                                      renderContentType)
@@ -178,3 +178,7 @@ mkErrorResponse EmptyCommentText =
   resp400 PlainText "Empty Comment"
 mkErrorResponse EmptyTopic =
   resp400 PlainText "Empty Topic"
+mkErrorResponse (DBError _) =
+  resp400 PlainText "Some kind of DB error"
+mkErrorResponse DBRowRetrieval =
+  resp400 PlainText "DB Row Retrieval failed for some reason"

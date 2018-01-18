@@ -35,6 +35,19 @@ main = do
           -- a string literal, it will assume that is the expected body of
           -- the request and also check for a 200 response code.
           get "/list" `shouldRespondWith` "List Request not implemented"
+      describe "Add Route" $ do
+        it "Should respond with hi or something" $
+          post "/nonsense/add" "hullaballo" `shouldRespondWith` "Hello there!"
+        it "Should respond with error if we try to add an empty comment" $
+          post "/nonsense/add" "" `shouldRespondWith` "Empty Comment" {matchStatus = 400}
+      describe "View Route" $ do
+        it "Should respond with not implemented when given a topic" $
+          get "/nonsense/view" `shouldRespondWith` "View Request not implemented"
+        it "Should respond with an Error when given an empty topic" $
+          get "//view" `shouldRespondWith` "Empty Topic" {matchStatus = 400}
+      describe "Bad Route" $ do
+        it "Should respond with not implemented when given a topic" $
+          get "/idontexist" `shouldRespondWith` "Unknown Route" {matchStatus = 404}
 
       -- Write some more tests, below are some ideas to get you started:
 

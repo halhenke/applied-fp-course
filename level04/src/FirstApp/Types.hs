@@ -2,7 +2,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 module FirstApp.Types
-  ( Error (..)
+  (
+    Error (..)
+    -- Error(DBError, DBRowRetrieval, EmptyComment, EmptyTopic, UnknownRoute)
   , RqType (..)
   , ContentType (..)
   , Topic
@@ -14,23 +16,28 @@ module FirstApp.Types
   , getCommentText
   , renderContentType
   , fromDbComment
+  , fromDbTopic
   ) where
 
-import           GHC.Generics      (Generic)
+import           GHC.Generics                       (Generic)
 
-import           Data.ByteString   (ByteString)
-import           Data.Text         (Text)
+import           Data.ByteString                    (ByteString)
+import           Data.Text                          (Text)
 
-import           Data.List         (stripPrefix)
-import           Data.Maybe        (fromMaybe)
+import           Data.List                          (stripPrefix)
+import           Data.Maybe                         (fromMaybe)
 
-import           Data.Aeson        (ToJSON (toJSON))
-import qualified Data.Aeson        as A
-import qualified Data.Aeson.Types  as A
+import           Data.Aeson                         (ToJSON (toJSON))
+import qualified Data.Aeson                         as A
+import qualified Data.Aeson.Types                   as A
 
-import           Data.Time         (UTCTime)
+import           Data.Time                          (UTCTime)
+-- import           FirstApp.DB.Types (DBComment (..), DBTopic (..))
+import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
+import           FirstApp.DB.Types
 
-import           FirstApp.DB.Types (DBComment)
+-- import           FirstApp.DB.Types (DBComment)
+-- import           FirstApp.DB.Types
 
 newtype Topic = Topic Text
   deriving (Show, ToJSON)
@@ -69,8 +76,11 @@ data Comment = Comment
 modFieldLabel
   :: String
   -> String
-modFieldLabel =
-  error "modFieldLabel not implemented"
+modFieldLabel s = let
+  stripped = stripPrefix "comment" s
+  in
+    A.camelTo2 '_' . fromMaybe s $ stripped
+
 
 instance ToJSON Comment where
   -- This is one place where we can take advantage of our `Generic` instance.
@@ -92,11 +102,14 @@ instance ToJSON Comment where
 -- that we would be okay with showing someone. However unlikely it may be, this
 -- is a nice method for separating out the back and front end of a web app and
 -- providing greater guarantees about data cleanliness.
-fromDbComment
-  :: DBComment
-  -> Either Error Comment
-fromDbComment =
-  error "fromDbComment not yet implemented"
+fromDbComment :: DBComment -> Either Error Comment
+fromDbComment db = Comment (CommentId $ dbCommentID db)
+  <$> mkTopic (dbCommentTopic db)
+  <*> mkCommentText (dbCommentComment db)
+  <*> Right (dbCommentTime db)
+
+fromDbTopic :: DBTopic -> Either Error Topic
+fromDbTopic (DBTopic t) = nonEmptyText Topic DBRowRetrieval t
 
 nonEmptyText
   :: (Text -> a)
@@ -140,7 +153,9 @@ data Error
   | EmptyCommentText
   | EmptyTopic
   -- We need another constructor for our DB error types.
-  deriving Show
+  | DBError SQLiteResponse
+  | DBRowRetrieval
+    deriving Show
 
 data ContentType
   = PlainText
